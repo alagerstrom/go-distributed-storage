@@ -29,6 +29,7 @@ func (server *Server) Start() {
 	myRouter.HandleFunc("/data/{key}", server.get)
 	myRouter.HandleFunc("/data/put/{key}/{value}", server.put)
 	myRouter.HandleFunc("/server/connect/{url}", server.connect)
+	myRouter.HandleFunc("/server/ping", server.ping)
 
 	logger.Log("Server started")
 	logger.Log("Using port", port)
@@ -68,6 +69,11 @@ func (server *Server) connect(w http.ResponseWriter, r *http.Request) {
 	logger.Log("Connect:", url)
 	server.urls = append(server.urls, url)
 	_, _ = fmt.Fprintf(w, "Ok")
+}
+
+func (server *Server) ping(w http.ResponseWriter, r *http.Request) {
+	logger.Log("Received ping")
+	_, _ = fmt.Fprintf(w, "pong")
 }
 
 func (server *Server) handleError(w http.ResponseWriter, err error) {
