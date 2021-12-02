@@ -6,24 +6,26 @@ import (
 	"github.com/gorilla/mux"
 	"go-distributed-storage/logger"
 	"go-distributed-storage/storage"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Server struct {
 	store *storage.Storage
 	urls  []string
+	port  string
 }
 
-func New(store *storage.Storage) *Server {
-	return &Server{store: store}
+func New(store *storage.Storage, port string) *Server {
+	return &Server{store: store, port: fmt.Sprint(":", port)}
 }
 
 func (server *Server) Start() {
 	server.store.Put("Kalle", "Kula")
 	server.store.Put("Bertil", "Svensson")
 
-	var port = ":8080"
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/data", server.list)
 	myRouter.HandleFunc("/data/{key}", server.get)
@@ -31,10 +33,29 @@ func (server *Server) Start() {
 	myRouter.HandleFunc("/server/connect/{url}", server.connect)
 	myRouter.HandleFunc("/server/ping", server.ping)
 
-	logger.Log("Server started")
-	logger.Log("Using port", port)
+	go server.pinger()
 
-	log.Fatal(http.ListenAndServe(port, myRouter))
+	logger.Log("Server started")
+	logger.Log("Using port", server.port)
+
+	log.Fatal(http.ListenAndServe(server.port, myRouter))
+
+}
+
+func (server *Server) pinger() {
+	for _, url := range server.urls {
+		resp, err := http.Get(fmt.Sprint(url, "/server/ping"))
+		if err != nil {
+			logger.Log(err.Error())
+			continue
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			logger.Log(err.Error())
+		}
+		logger.Log(string(body))
+	}
+	time.Sleep(time.Second * 5)
 }
 
 func (server *Server) list(w http.ResponseWriter, r *http.Request) {
