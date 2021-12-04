@@ -18,6 +18,10 @@ type Server struct {
 	port  string
 }
 
+type ConnectDto struct {
+	Url string
+}
+
 func New(store *storage.Storage, port string) *Server {
 	return &Server{store: store, port: fmt.Sprint(":", port)}
 }
@@ -31,7 +35,7 @@ func (server *Server) Start() {
 	myRouter.HandleFunc("/data/get/{key}", server.get)
 	myRouter.HandleFunc("/data/put/{key}/{value}", server.put)
 	myRouter.HandleFunc("/data/delete/{key}", server.put)
-	myRouter.HandleFunc("/server/connect/{url}", server.connect)
+	myRouter.HandleFunc("/server/connect", server.connect)
 	myRouter.HandleFunc("/server/ping", server.ping)
 
 	go server.pinger()
@@ -44,19 +48,21 @@ func (server *Server) Start() {
 }
 
 func (server *Server) pinger() {
-	for _, url := range server.urls {
-		resp, err := http.Get(fmt.Sprint(url, "/server/ping"))
-		if err != nil {
-			logger.Log(err.Error())
-			continue
+	for {
+		for _, url := range server.urls {
+			resp, err := http.Get(fmt.Sprint(url, "/server/ping"))
+			if err != nil {
+				logger.Log(err.Error())
+				continue
+			}
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				logger.Log(err.Error())
+			}
+			logger.Log(string(body))
 		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			logger.Log(err.Error())
-		}
-		logger.Log(string(body))
+		time.Sleep(time.Second * 5)
 	}
-	time.Sleep(time.Second * 5)
 }
 
 func (server *Server) list(w http.ResponseWriter, r *http.Request) {
@@ -94,11 +100,17 @@ func (server *Server) delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Server) connect(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	url := vars["url"]
-	logger.Log("Connect:", url)
-	server.urls = append(server.urls, url)
-	_, _ = fmt.Fprintf(w, "Ok")
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var connectDto ConnectDto
+	err := json.Unmarshal(reqBody, &connectDto)
+	if err != nil {
+		logger.Log("Connect request error", err.Error())
+		_, _ = fmt.Fprintf(w, err.Error())
+	} else {
+		logger.Log("Connect:", connectDto.Url)
+		server.urls = append(server.urls, connectDto.Url)
+		_, _ = fmt.Fprintf(w, "Ok")
+	}
 }
 
 func (server *Server) ping(w http.ResponseWriter, r *http.Request) {

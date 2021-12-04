@@ -86,6 +86,14 @@ func Start() {
 					},
 				},
 				{
+					Name:        "connect",
+					Usage:       "[url]",
+					Description: "Connect a server to another server",
+					Action: func(c *cli.Context) {
+						client.Connect(url, c.Args().First())
+					},
+				},
+				{
 					Name:        "ping",
 					Description: "Ping a server",
 					Action: func(c *cli.Context) {
