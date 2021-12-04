@@ -1,7 +1,7 @@
 package storage
 
 type Storage struct {
-	data map[string]Data
+	data map[string]string
 }
 
 type Data struct {
@@ -10,22 +10,27 @@ type Data struct {
 }
 
 func New() *Storage {
-	return &Storage{make(map[string]Data)}
+	return &Storage{make(map[string]string)}
 }
 
 func (store *Storage) Put(key string, value string) {
-	store.data[key] = Data{Key: key, Value: value}
+	store.data[key] = value
 }
 
 func (store Storage) Get(key string) (d Data, exists bool) {
-	d, exists = store.data[key]
-	return d, exists
+	v, exists := store.data[key]
+	return Data{key, v}, exists
+}
+
+// Delete only sets the value to null, but leaves the entry
+func (store *Storage) Delete(key string) {
+	delete(store.data, key)
 }
 
 func (store Storage) List() []Data {
 	var d []Data
-	for _, data := range store.data {
-		d = append(d, data)
+	for key, value := range store.data {
+		d = append(d, Data{key, value})
 	}
 	return d
 }

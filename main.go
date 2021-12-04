@@ -1,7 +1,7 @@
 package main
 
-import "go-distributed-storage/cli"
+import "go-distributed-storage/command"
 
 func main() {
-	cli.Start()
+	command.Start()
 }

@@ -28,8 +28,9 @@ func (server *Server) Start() {
 
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/data", server.list)
-	myRouter.HandleFunc("/data/{key}", server.get)
+	myRouter.HandleFunc("/data/get/{key}", server.get)
 	myRouter.HandleFunc("/data/put/{key}/{value}", server.put)
+	myRouter.HandleFunc("/data/delete/{key}", server.put)
 	myRouter.HandleFunc("/server/connect/{url}", server.connect)
 	myRouter.HandleFunc("/server/ping", server.ping)
 
@@ -81,6 +82,14 @@ func (server *Server) put(w http.ResponseWriter, r *http.Request) {
 	value := vars["value"]
 	logger.Log("Put:", key, ":", value)
 	server.store.Put(key, value)
+	_, _ = fmt.Fprintf(w, "Ok")
+}
+
+func (server *Server) delete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	logger.Log("Delete:", key)
+	server.store.Delete(key)
 	_, _ = fmt.Fprintf(w, "Ok")
 }
 
