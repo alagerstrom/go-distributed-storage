@@ -3,33 +3,36 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"go-distributed-storage/logger"
 	"go-distributed-storage/storage"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 type Server struct {
 	store *storage.Storage
 	urls  []string
 	port  string
+	name  string
 }
 
 type ConnectDto struct {
 	Url string
 }
 
-func New(store *storage.Storage, port string) *Server {
-	return &Server{store: store, port: fmt.Sprint(":", port)}
+type PongDto struct {
+	Name string
+}
+
+func New(store *storage.Storage, port string, name string) *Server {
+	return &Server{store: store, port: fmt.Sprint(":", port), name: name}
 }
 
 func (server *Server) Start() {
-	server.store.Put("Kalle", "Kula")
-	server.store.Put("Bertil", "Svensson")
-
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/data", server.list)
 	myRouter.HandleFunc("/data/get/{key}", server.get)
@@ -44,7 +47,6 @@ func (server *Server) Start() {
 	logger.Log("Using port", server.port)
 
 	log.Fatal(http.ListenAndServe(server.port, myRouter))
-
 }
 
 func (server *Server) pinger() {
@@ -55,13 +57,24 @@ func (server *Server) pinger() {
 				logger.Log(err.Error())
 				continue
 			}
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				logger.Log(err.Error())
-			}
-			logger.Log(string(body))
+			server.handlePongResponse(resp)
 		}
 		time.Sleep(time.Second * 5)
+	}
+}
+
+func (server *Server) handlePongResponse(r *http.Response) {
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Log(err.Error())
+	}
+	logger.Log(string(reqBody))
+	var pongDto PongDto
+	err = json.Unmarshal(reqBody, &pongDto)
+	if err != nil {
+		logger.Log("Pong response error", err.Error())
+	} else {
+		logger.Log("Pong:", pongDto.Name)
 	}
 }
 
@@ -115,7 +128,8 @@ func (server *Server) connect(w http.ResponseWriter, r *http.Request) {
 
 func (server *Server) ping(w http.ResponseWriter, r *http.Request) {
 	logger.Log("Received ping")
-	_, _ = fmt.Fprintf(w, "pong")
+	pong := &PongDto{Name: server.name}
+	server.handleError(w, json.NewEncoder(w).Encode(pong))
 }
 
 func (server *Server) handleError(w http.ResponseWriter, err error) {
